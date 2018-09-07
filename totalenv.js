@@ -18,7 +18,13 @@ class TotalENV {
         
         this.configMapENVSCopy = Object.assign({}, this.configMapENVS);
         this.configMapTotalCopy = Object.assign({}, this.configMapTotal);
+
+        this.inTotalNotEnv = {}
+        this.inEnvNotTotal = {}
+        
     }
+
+
 
     checkFiles () {
         console.log("TotalENV::checkFiles")
@@ -46,6 +52,18 @@ class TotalENV {
         }
         let configs = DotENV.config({path: this.totalFile}).parsed
         Object.assign(this.configMapTotal, configs)
+
+        for (let i in this.configMapTotal){
+            if (!this.configMapENVS[i]){
+                console.log("warning :: key total ", i , " not exits in envs")
+            }
+        }
+        for (let i in this.configMapENVS){
+            if (!this.configMapTotal[i]){
+                console.log("warning :: key envs ", i , " not exits in total")
+            }
+        }
+
     }
 
     getEnvs(){
@@ -168,7 +186,6 @@ class TotalENV {
             this.fillOneEnv(envFile)
         }
 
-        console.log("key in total but not found in child env",Object.keys(this.configMapTotalCopy));
     }
 
     toTotal(){
