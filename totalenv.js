@@ -12,9 +12,12 @@ class TotalENV {
         this.isHasTotal = false;
         this.configMapENVS = {};
         this.configMapTotal = {};
-
+        this.keyTotalNotUsed = {};
         this.checkFiles();
         this.readConfigMap();
+        
+        this.configMapENVSCopy = Object.assign({}, this.configMapENVS);
+        this.configMapTotalCopy = Object.assign({}, this.configMapTotal);
     }
 
     checkFiles () {
@@ -26,7 +29,7 @@ class TotalENV {
             if (/^\.env.*/.test(item)){
                 this.envFiles.push(this.path + '/' + item)
             }
-            if (this.totalFile == item){
+            if ('totalenv.txt' == item){
                 console.log(">>> already has totalenv.txt")
                 this.isHasTotal = true;
             }
@@ -70,9 +73,60 @@ class TotalENV {
         
     }
 
+    addTotalKey(){
+        console.log("TotalENV::addTotalKey")
+        let configMap = DotENV.config({path: this.totalFile}).parsed
+        let lines = fs.readFileSync(this.totalFile, 'utf-8')
+            .split('\n')
+            .filter(Boolean);
+        
+        let newLines = []
+        for (let i in lines){
+            let line = lines[i]
+            let newLine = null;
+            let tokens = line.split('=')
+            let key = tokens[0];
+            if (key && this.configMapENVS[key]){
+                delete this.configMapENVSCopy[key];
+                // let value = this.configMapENVS[key]
+                // newLine = this.getLine(key, value)
+                newLine = line + "\n"
+            } else {
+                newLine = line + "\n"
+            }
+            
+            newLines.push(newLine)
+        }
+
+        fs.unlinkSync(this.totalFile);
+
+        for (var i in newLines){
+            let line = newLines[i];
+            fs.writeFileSync(this.totalFile, line, {flag: "a+"} )
+        }
+
+        if (Object.keys(this.configMapENVSCopy).length > 0){
+            console.log("new keys", this.configMapENVSCopy)
+            let linesAppend = []
+
+            for (var key in this.configMapENVSCopy){
+                let value = this.configMapENVSCopy[key];
+                linesAppend.push( this.getLine(key, value))
+            }
+            linesAppend.sort();
+
+            for (var i in linesAppend){
+                let line = linesAppend[i];
+                fs.writeFileSync(this.totalFile, line,{flag: "a+"} )
+            }
+        }
+        
+    }
+
+    
 
     fillOneEnv(envFile) {
-        console.log("TotalENV::fillOneEnv")
+        console.log("TotalENV::fillOneEnv", envFile)
         let configMap = DotENV.config({path: envFile}).parsed
         let lines = fs.readFileSync(envFile, 'utf-8')
             .split('\n')
@@ -82,19 +136,18 @@ class TotalENV {
         for (let i in lines){
             let line = lines[i]
             let newLine = null;
-            console.log("line", line, typeof line)
             let tokens = line.split('=')
             let key = tokens[0];
             if (key && this.configMapTotal[key]){
+                delete this.configMapTotalCopy[key];
                 let value = this.configMapTotal[key]
                 newLine = this.getLine(key, value)
             } else {
                 newLine = line + "\n"
             }
-            newLines.push(newLines)
+            
+            newLines.push(newLine)
         }
-
-        console.log("newLines", newLines)
 
         fs.unlinkSync(envFile);
 
@@ -106,16 +159,22 @@ class TotalENV {
 
     fillEnv() {
         console.log("TotalENV::fillEnv")
+        if (!this.isHasTotal) {
+            console.log("Total file not found")
+            return;
+        }
         for (var i in this.envFiles){
             let envFile = this.envFiles[i];
             this.fillOneEnv(envFile)
         }
+
+        console.log("key in total but not found in child env",Object.keys(this.configMapTotalCopy));
     }
 
     toTotal(){
         console.log("TotalENV::toTotal")
         if (this.isHasTotal){
-
+            this.addTotalKey();
         } else {
             this.envToTotal();
         }
